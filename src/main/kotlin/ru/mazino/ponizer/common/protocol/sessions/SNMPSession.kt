@@ -9,13 +9,12 @@ import org.snmp4j.smi.OID
 import org.snmp4j.smi.OctetString
 import org.snmp4j.smi.VariableBinding
 import org.snmp4j.transport.DefaultUdpTransportMapping
-import org.snmp4j.util.DefaultPDUFactory
-import org.snmp4j.util.TreeEvent
-import org.snmp4j.util.TreeUtils
+import org.snmp4j.util.*
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 import ru.mazino.ponizer.api.protocol.Session
 import java.util.*
+import kotlin.collections.HashMap
 import kotlin.concurrent.thread
 
 @Component
@@ -33,7 +32,7 @@ class SNMPSession(ip: String, community: String) : Session {
     }
 
     override fun get(oid: OID): String {
-        return snmp.send(PDU().apply { add(VariableBinding(oid)); type = PDU.GETNEXT }, target, null).run {
+        return snmp.send(PDU().apply { add(VariableBinding(oid)); type = PDU.GET }, target, null).run {
             response.get(0).variable.toString()
         }
     }
@@ -68,6 +67,23 @@ class SNMPSession(ip: String, community: String) : Session {
             for (varBind in varBinds) {
                 if (varBind == null) continue
                 result[".${varBind.oid}"] = varBind.variable.toString()
+            }
+        }
+        return result
+    }
+
+    override fun table(oids: Array<String>): HashMap<String, String> {
+        return table(oids.map { oid -> OID(oid) }.toTypedArray())
+    }
+
+    override fun table(oids: Array<OID>): HashMap<String, String> {
+        val result = HashMap<String, String>()
+        val tableUtils = TableUtils(snmp, DefaultPDUFactory())
+        val events = tableUtils.getTable(target, oids, null, null)
+        for (event in events) {
+            if (event.isError) continue
+            for (varBind in event.columns) {
+                result.put(varBind.oid.toString(), varBind.variable.toString())
             }
         }
         return result

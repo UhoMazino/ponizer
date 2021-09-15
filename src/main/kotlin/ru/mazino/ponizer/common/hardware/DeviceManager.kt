@@ -1,9 +1,6 @@
 package ru.mazino.ponizer.common.hardware
 
-import kotlinx.serialization.json.Json
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.ApplicationContext
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
@@ -18,13 +15,12 @@ import ru.mazino.ponizer.api.hardware.Device
 class DeviceManager(
     @Value("\${app.deviceListBaseURL}") private val baseURL: String,
     @Value("\${app.token}") private val token: String,
-    @Autowired val ctx: ApplicationContext
+    val deviceFactory: DeviceFactory
 ) {
     lateinit var devices: List<Device>
 
-    fun init() {
-        val factory = DeviceFactory(ctx)
-        devices = RestTemplate().exchange(
+    init {
+        RestTemplate().exchange(
             UriComponentsBuilder.fromHttpUrl(baseURL).run {
                 path("/dcim/devices")
                 queryParam("role", "OLT")
@@ -37,7 +33,7 @@ class DeviceManager(
             HttpEntity<Unit>(HttpHeaders().apply { set("Authorization", token) }),
             DeviceListDTO::class.java,
         ).body?.results!!.map {
-            return@map factory.createInstance(it)
-        }
+            return@map deviceFactory.createInstance(it)
+        }.also { devices = it }
     }
 }

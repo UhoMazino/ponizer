@@ -9,5 +9,6 @@ interface Session {
     fun getAll(oids: Array<OID>): Array<String>
     fun walk(oid: String): Map<String, String>
     fun walk(oid: OID): Map<String, String>
-
+    fun table(oids: Array<String>): HashMap<String, String>
+    fun table(oids: Array<OID>): HashMap<String, String>
 }
